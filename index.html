@@ -515,21 +515,23 @@
             canvas.height = frameHeight;
             const ctx = canvas.getContext('2d');
 
-            const scaleX = spriteImage.width / spritePreview.offsetWidth;
-            const scaleY = spriteImage.height / spritePreview.offsetHeight;
+            // 원본 이미지 기준으로 실제 프레임 크기 계산
+            const actualFrameWidth = spriteImage.width / gridCols;
+            const actualFrameHeight = spriteImage.height / gridRows;
 
             for (let i = 0; i < framesToExtract.length; i++) {
                 const frameNum = framesToExtract[i];
                 const row = Math.floor((frameNum - 1) / gridCols);
                 const col = (frameNum - 1) % gridCols;
 
-                const sourceX = col * frameWidth * scaleX;
-                const sourceY = row * frameHeight * scaleY;
+                // 원본 이미지에서의 실제 좌표
+                const sourceX = col * actualFrameWidth;
+                const sourceY = row * actualFrameHeight;
 
                 ctx.clearRect(0, 0, frameWidth, frameHeight);
                 ctx.drawImage(
                     spriteImage,
-                    sourceX, sourceY, frameWidth * scaleX, frameHeight * scaleY,
+                    sourceX, sourceY, actualFrameWidth, actualFrameHeight,
                     0, 0, frameWidth, frameHeight
                 );
 
