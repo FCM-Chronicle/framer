@@ -508,9 +508,7 @@
             }
 
             results.innerHTML = '';
-            allFramesData = []; // 전체 프레임 데이터 초기화
             document.querySelector('.progress').style.display = 'block';
-            downloadAllBtn.style.display = 'none'; // 다운로드 버튼 숨김
 
             const canvas = document.createElement('canvas');
             canvas.width = frameWidth;
@@ -539,13 +537,6 @@
 
                 const frameDataUrl = canvas.toDataURL('image/png');
                 
-                // 전체 프레임 데이터에 저장
-                allFramesData.push({
-                    dataUrl: frameDataUrl,
-                    frameNum: frameNum,
-                    filename: `frame_${frameNum.toString().padStart(3, '0')}.png`
-                });
-                
                 const frameDiv = document.createElement('div');
                 frameDiv.className = 'frame-result';
                 frameDiv.innerHTML = `
@@ -566,46 +557,7 @@
             setTimeout(() => {
                 document.querySelector('.progress').style.display = 'none';
                 progressBar.style.width = '0%';
-                
-                // 전체 추출인 경우에만 전체 다운로드 버튼 표시
-                if (extractOption === 'all' && allFramesData.length > 1) {
-                    downloadAllBtn.style.display = 'block';
-                }
             }, 500);
-        }
-
-        async function downloadAllFrames() {
-            if (allFramesData.length === 0) return;
-
-            downloadAllBtn.disabled = true;
-            downloadAllBtn.textContent = 'PNG 다운로드 중...';
-
-            try {
-                // 각 프레임을 순차적으로 다운로드
-                for (let i = 0; i < allFramesData.length; i++) {
-                    const frameData = allFramesData[i];
-                    
-                    // 다운로드 링크 생성 및 클릭
-                    const a = document.createElement('a');
-                    a.href = frameData.dataUrl;
-                    a.download = frameData.filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    
-                    // 브라우저가 다운로드를 처리할 시간을 줌
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                }
-
-                // 완료 메시지
-                alert(`총 ${allFramesData.length}개의 PNG 파일 다운로드가 시작되었습니다!`);
-
-            } catch (error) {
-                alert('PNG 파일 다운로드 중 오류가 발생했습니다: ' + error.message);
-            }
-
-            downloadAllBtn.disabled = false;
-            downloadAllBtn.textContent = '전체 PNG 다운로드';
         }
 
         // 윈도우 리사이즈 시 그리드 다시 그리기
