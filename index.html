@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>7x7 스프라이트 GIF 변환기</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            background: #f8fafc;
+            border: 3px dashed #cbd5e1;
+            border-radius: 15px;
+            padding: 60px 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 30px;
+        }
+
+        .upload-section:hover {
+            border-color: #4f46e5;
+            background: #f1f5f9;
+            transform: translateY(-2px);
+        }
+
+        .upload-section.dragover {
+            border-color: #4f46e5;
+            background: #eef2ff;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #64748b;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #475569;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .control-group {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .control-group input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .control-group input:focus {
+            outline: none;
+            border-color: #4f46e5;
+        }
+
+        .preview-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .preview-box {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .preview-box h3 {
+            margin-bottom: 15px;
+            color: #374151;
+            font-size: 1.1rem;
+        }
+
+        .preview-box canvas,
+        .preview-box img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .convert-btn {
+            width: 100%;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .convert-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(79, 70, 229, 0.3);
+        }
+
+        .convert-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .download-section {
+            text-align: center;
+            padding: 20px;
+            background: #f0fdf4;
+            border-radius: 12px;
+            border: 1px solid #bbf7d0;
+            display: none;
+        }
+
+        .download-btn {
+            padding: 12px 24px;
+            background: #059669;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.2s ease;
+        }
+
+        .download-btn:hover {
+            background: #047857;
+        }
+
+        .frames-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .frame {
+            width: 80px;
+            height: 80px;
+            border: 2px solid #e2e8f0;
+            border-radius: 4px;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        .frame img {
+            max-width: 100%;
+            max-height: 100%;
+            image-rendering: pixelated;
+        }
+
+        .error {
+            color: #dc2626;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .preview-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 7x7 스프라이트 GIF 변환기</h1>
+            <p>7x7 그리드 스프라이트를 투명 배경의 애니메이션 GIF로 변환하세요</p>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-section" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">클릭하거나 파일을 드래그하여 업로드</div>
+                <div class="upload-subtext">PNG, JPG, GIF 파일 지원</div>
+            </div>
+            <input type="file" id="fileInput" accept="image/*">
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="frameWidth">프레임 너비 (px)</label>
+                    <input type="number" id="frameWidth" value="32" min="1" max="1000">
+                </div>
+                <div class="control-group">
+                    <label for="frameHeight">프레임 높이 (px)</label>
+                    <input type="number" id="frameHeight" value="32" min="1" max="1000">
+                </div>
+                <div class="control-group">
+                    <label for="frameDelay">프레임 딜레이 (ms)</label>
+                    <input type="number" id="frameDelay" value="100" min="10" max="5000">
+                </div>
+                <div class="control-group">
+                    <label for="quality">품질 (1-30, 낮을수록 고품질)</label>
+                    <input type="number" id="quality" value="10" min="1" max="30">
+                </div>
+            </div>
+
+            <div class="preview-section">
+                <div class="preview-box">
+                    <h3>원본 스프라이트</h3>
+                    <canvas id="originalCanvas" style="display: none;"></canvas>
+                    <div id="framesPreview" class="frames-preview" style="display: none;"></div>
+                </div>
+                <div class="preview-box">
+                    <h3>변환된 GIF</h3>
+                    <img id="gifPreview" style="display: none;" alt="변환된 GIF">
+                </div>
+            </div>
+
+            <button class="convert-btn" id="convertBtn" disabled>GIF로 변환하기</button>
+            
+            <div class="progress" id="progress">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+
+            <div class="download-section" id="downloadSection">
+                <h3>✅ 변환 완료!</h3>
+                <p>투명 배경의 애니메이션 GIF가 준비되었습니다.</p>
+                <a href="#" id="downloadBtn" class="download-btn">GIF 다운로드</a>
+            </div>
+
+            <div class="error" id="errorMessage"></div>
+        </div>
+    </div>
+
+    <script>
+        class SpriteToGifConverter {
+            constructor() {
+                this.uploadSection = document.querySelector('.upload-section');
+                this.fileInput = document.getElementById('fileInput');
+                this.originalCanvas = document.getElementById('originalCanvas');
+                this.originalCtx = this.originalCanvas.getContext('2d');
+                this.framesPreview = document.getElementById('framesPreview');
+                this.gifPreview = document.getElementById('gifPreview');
+                this.convertBtn = document.getElementById('convertBtn');
+                this.downloadSection = document.getElementById('downloadSection');
+                this.downloadBtn = document.getElementById('downloadBtn');
+                this.progress = document.getElementById('progress');
+                this.progressBar = document.getElementById('progressBar');
+                this.errorMessage = document.getElementById('errorMessage');
+
+                this.frameWidthInput = document.getElementById('frameWidth');
+                this.frameHeightInput = document.getElementById('frameHeight');
+                this.frameDelayInput = document.getElementById('frameDelay');
+                this.qualityInput = document.getElementById('quality');
+
+                this.currentImage = null;
+                this.frames = [];
+
+                this.initEventListeners();
+            }
+
+            initEventListeners() {
+                // 파일 업로드
+                this.fileInput.addEventListener('change', (e) => {
+                    this.handleFileSelect(e.target.files[0]);
+                });
+
+                // 드래그 앤 드롭
+                this.uploadSection.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    this.uploadSection.classList.add('dragover');
+                });
+
+                this.uploadSection.addEventListener('dragleave', () => {
+                    this.uploadSection.classList.remove('dragover');
+                });
+
+                this.uploadSection.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    this.uploadSection.classList.remove('dragover');
+                    const file = e.dataTransfer.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                        this.handleFileSelect(file);
+                    }
+                });
+
+                // 변환 버튼
+                this.convertBtn.addEventListener('click', () => {
+                    this.convertToGif();
+                });
+
+                // 입력값 변경 시 미리보기 업데이트
+                [this.frameWidthInput, this.frameHeightInput].forEach(input => {
+                    input.addEventListener('change', () => {
+                        if (this.currentImage) {
+                            this.extractFrames();
+                        }
+                    });
+                });
+            }
+
+            handleFileSelect(file) {
+                if (!file || !file.type.startsWith('image/')) {
+                    this.showError('이미지 파일을 선택해주세요.');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        this.currentImage = img;
+                        this.displayOriginalImage();
+                        this.extractFrames();
+                        this.convertBtn.disabled = false;
+                        this.hideError();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            displayOriginalImage() {
+                this.originalCanvas.width = this.currentImage.width;
+                this.originalCanvas.height = this.currentImage.height;
+                this.originalCtx.drawImage(this.currentImage, 0, 0);
+                this.originalCanvas.style.display = 'block';
+            }
+
+            extractFrames() {
+                if (!this.currentImage) return;
+
+                const frameWidth = parseInt(this.frameWidthInput.value);
+                const frameHeight = parseInt(this.frameHeightInput.value);
+                
+                this.frames = [];
+                this.framesPreview.innerHTML = '';
+
+                // 7x7 그리드에서 프레임 추출
+                for (let row = 0; row < 7; row++) {
+                    for (let col = 0; col < 7; col++) {
+                        const x = col * frameWidth;
+                        const y = row * frameHeight;
+
+                        // 이미지 경계를 벗어나면 건너뛰기
+                        if (x + frameWidth > this.currentImage.width || 
+                            y + frameHeight > this.currentImage.height) {
+                            continue;
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = frameWidth;
+                        canvas.height = frameHeight;
+                        const ctx = canvas.getContext('2d');
+
+                        // 프레임 추출
+                        ctx.drawImage(
+                            this.currentImage,
+                            x, y, frameWidth, frameHeight,
+                            0, 0, frameWidth, frameHeight
+                        );
+
+                        // 빈 프레임 체크 (모든 픽셀이 투명한지 확인)
+                        const imageData = ctx.getImageData(0, 0, frameWidth, frameHeight);
+                        const hasContent = imageData.data.some((value, index) => {
+                            return index % 4 === 3 && value > 0; // 알파 채널 확인
+                        });
+
+                        if (hasContent) {
+                            this.frames.push(canvas);
+                            
+                            // 미리보기에 프레임 추가
+                            const frameDiv = document.createElement('div');
+                            frameDiv.className = 'frame';
+                            const frameImg = document.createElement('img');
+                            frameImg.src = canvas.toDataURL();
+                            frameDiv.appendChild(frameImg);
+                            this.framesPreview.appendChild(frameDiv);
+                        }
+                    }
+                }
+
+                this.framesPreview.style.display = 'grid';
+                
+                if (this.frames.length === 0) {
+                    this.showError('유효한 프레임을 찾을 수 없습니다. 프레임 크기를 확인해주세요.');
+                } else {
+                    this.hideError();
+                }
+            }
+
+            async convertToGif() {
+                if (this.frames.length === 0) {
+                    this.showError('변환할 프레임이 없습니다.');
+                    return;
+                }
+
+                this.convertBtn.disabled = true;
+                this.progress.style.display = 'block';
+                this.downloadSection.style.display = 'none';
+                this.hideError();
+
+                try {
+                    const gif = new GIF({
+                        workers: 2,
+                        quality: parseInt(this.qualityInput.value),
+                        transparent: 0x00000000,
+                        background: '#ffffff'
+                    });
+
+                    const delay = parseInt(this.frameDelayInput.value);
+
+                    // 프레임 추가
+                    this.frames.forEach((frame, index) => {
+                        gif.addFrame(frame, { delay: delay });
+                        const progress = ((index + 1) / this.frames.length) * 50;
+                        this.updateProgress(progress);
+                    });
+
+                    gif.on('progress', (p) => {
+                        const progress = 50 + (p * 50);
+                        this.updateProgress(progress);
+                    });
+
+                    gif.on('finished', (blob) => {
+                        const url = URL.createObjectURL(blob);
+                        this.gifPreview.src = url;
+                        this.gifPreview.style.display = 'block';
+                        
+                        this.downloadBtn.href = url;
+                        this.downloadBtn.download = 'sprite-animation.gif';
+                        
+                        this.downloadSection.style.display = 'block';
+                        this.progress.style.display = 'none';
+                        this.convertBtn.disabled = false;
+                        
+                        this.updateProgress(100);
+                    });
+
+                    gif.render();
+
+                } catch (error) {
+                    this.showError('GIF 변환 중 오류가 발생했습니다: ' + error.message);
+                    this.convertBtn.disabled = false;
+                    this.progress.style.display = 'none';
+                }
+            }
+
+            updateProgress(percent) {
+                this.progressBar.style.width = percent + '%';
+            }
+
+            showError(message) {
+                this.errorMessage.textContent = message;
+                this.errorMessage.style.display = 'block';
+            }
+
+            hideError() {
+                this.errorMessage.style.display = 'none';
+            }
+        }
+
+        // 앱 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            new SpriteToGifConverter();
+        });
+    </script>
+</body>
+</html>
