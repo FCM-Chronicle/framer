@@ -502,8 +502,10 @@
             }
 
             async convertToGif() {
-                if (this.frames.length === 0) {
-                    this.showError('변환할 프레임이 없습니다.');
+                const selectedFrames = this.getSelectedFramesCanvases();
+                
+                if (selectedFrames.length === 0) {
+                    this.showError('변환할 프레임을 선택해주세요.');
                     return;
                 }
 
@@ -520,7 +522,7 @@
 
                 try {
                     // 간단한 GIF 인코더 사용
-                    await this.createGifWithCanvas();
+                    await this.createGifWithCanvas(selectedFrames);
 
                 } catch (error) {
                     this.showError('GIF 변환 중 오류가 발생했습니다: ' + error.message);
@@ -529,7 +531,7 @@
                 }
             }
 
-            async createGifWithCanvas() {
+            async createGifWithCanvas(frames) {
                 // Canvas를 사용한 간단한 APNG/WebP 대신 애니메이션 생성
                 const delay = parseInt(this.frameDelayInput.value);
                 const quality = parseInt(this.qualityInput.value);
@@ -542,9 +544,9 @@
                     });
 
                     // 프레임 추가
-                    this.frames.forEach((frame, index) => {
+                    frames.forEach((frame, index) => {
                         gif.addFrame(frame, { delay: delay });
-                        const progress = ((index + 1) / this.frames.length) * 30;
+                        const progress = ((index + 1) / frames.length) * 30;
                         this.updateProgress(progress);
                     });
 
@@ -565,6 +567,61 @@
                         this.progress.style.display = 'none';
                         this.convertBtn.disabled = false;
                         
+                        this.updateProgress(100);
+                    });
+
+                    gif.render();
+
+                } catch (error) {
+                    // GIF.js가 실패하면 대체 방법 사용
+                    this.createAlternativeAnimation(frames);
+                }
+            }
+
+            createAlternativeAnimation(frames) {
+                // WebP 애니메이션 또는 APNG 대신 간단한 애니메이션 구현
+                const delay = parseInt(this.frameDelayInput.value);
+                
+                // 모든 프레임을 하나의 스프라이트로 합치기
+                const spriteCanvas = document.createElement('canvas');
+                const spriteCtx = spriteCanvas.getContext('2d');
+                
+                const frameWidth = frames[0].width;
+                const frameHeight = frames[0].height;
+                const frameCount = frames.length;
+                
+                spriteCanvas.width = frameWidth;
+                spriteCanvas.height = frameHeight * frameCount;
+                
+                frames.forEach((frame, index) => {
+                    spriteCtx.drawImage(frame, 0, index * frameHeight);
+                });
+                
+                // CSS 애니메이션으로 스프라이트 애니메이션 생성
+                const animationCanvas = document.createElement('canvas');
+                animationCanvas.width = frameWidth;
+                animationCanvas.height = frameHeight;
+                animationCanvas.style.background = 'url(' + spriteCanvas.toDataURL() + ')';
+                animationCanvas.style.animation = `sprite-animation ${delay * frameCount}ms infinite steps(${frameCount})`;
+                
+                // 단일 프레임 GIF로 변환 (애니메이션은 CSS로)
+                this.gifPreview.src = frames[0].toDataURL();
+                this.gifPreview.style.display = 'block';
+                
+                const link = document.createElement('a');
+                link.download = 'sprite-frames.png';
+                link.href = spriteCanvas.toDataURL();
+                
+                this.downloadBtn.href = spriteCanvas.toDataURL();
+                this.downloadBtn.download = 'sprite-sheet.png';
+                
+                this.downloadSection.style.display = 'block';
+                this.progress.style.display = 'none';
+                this.convertBtn.disabled = false;
+                this.updateProgress(100);
+                
+                this.showError('GIF 생성에 실패했지만 스프라이트 시트를 다운로드할 수 있습니다.');
+            }        
                         this.updateProgress(100);
                     });
 
