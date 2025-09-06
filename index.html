@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>7x7 스프라이트 GIF 변환기</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.min.js"></script>
+    <title>스프라이트 프레임 추출기</title>
     <style>
         * {
             margin: 0;
@@ -17,81 +16,26 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
-            color: #333;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: white;
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
         }
 
-        .header {
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-            color: white;
-            padding: 40px;
+        h1 {
             text-align: center;
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            font-weight: 700;
-        }
-
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
-        .main-content {
-            padding: 40px;
-        }
-
-        .upload-section {
-            background: #f8fafc;
-            border: 3px dashed #cbd5e1;
-            border-radius: 15px;
-            padding: 60px 40px;
-            text-align: center;
-            transition: all 0.3s ease;
-            cursor: pointer;
+            color: #333;
             margin-bottom: 30px;
-        }
-
-        .upload-section:hover {
-            border-color: #4f46e5;
-            background: #f1f5f9;
-            transform: translateY(-2px);
-        }
-
-        .upload-section.dragover {
-            border-color: #4f46e5;
-            background: #eef2ff;
-        }
-
-        .upload-icon {
-            font-size: 4rem;
-            margin-bottom: 20px;
-            color: #64748b;
-        }
-
-        .upload-text {
-            font-size: 1.2rem;
-            color: #475569;
-            margin-bottom: 10px;
-        }
-
-        .upload-subtext {
-            color: #64748b;
-            font-size: 0.9rem;
-        }
-
-        #fileInput {
-            display: none;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .controls {
@@ -99,602 +43,526 @@
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
         }
 
         .control-group {
-            background: #f8fafc;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
-        .control-group label {
-            display: block;
-            margin-bottom: 8px;
+        label {
             font-weight: 600;
-            color: #374151;
+            color: #555;
+            font-size: 0.9rem;
         }
 
-        .control-group input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 2px solid #e2e8f0;
+        input[type="number"], input[type="file"] {
+            padding: 12px;
+            border: 2px solid #e1e5e9;
             border-radius: 8px;
             font-size: 1rem;
-            transition: border-color 0.2s ease;
+            transition: all 0.3s ease;
         }
 
-        .control-group input:focus {
+        input[type="number"]:focus, input[type="file"]:focus {
+            border-color: #667eea;
             outline: none;
-            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .upload-area {
+            grid-column: 1 / -1;
+            border: 3px dashed #ccc;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: white;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #ccc;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 30px;
+            align-items: start;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
         }
 
         .preview-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-
-        .preview-box {
-            background: #f8fafc;
-            border-radius: 12px;
+            background: white;
+            border-radius: 15px;
             padding: 20px;
-            text-align: center;
-            border: 1px solid #e2e8f0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
 
-        .preview-box h3 {
-            margin-bottom: 15px;
-            color: #374151;
-            font-size: 1.1rem;
-        }
-
-        .preview-box canvas,
-        .preview-box img {
-            max-width: 100%;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        .convert-btn {
+        .sprite-preview {
             width: 100%;
-            padding: 15px 30px;
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            max-width: 500px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            display: block;
+            margin: 0 auto 20px;
+        }
+
+        .grid-overlay {
+            position: relative;
+            display: inline-block;
+        }
+
+        .grid-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .extraction-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+        }
+
+        .extraction-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .radio-option:hover, .radio-option.selected {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .frame-input {
+            display: none;
+            margin-top: 10px;
+        }
+
+        .frame-input.show {
+            display: block;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
             color: white;
             border: none;
-            border-radius: 12px;
+            border-radius: 10px;
             font-size: 1.1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin-bottom: 20px;
         }
 
-        .convert-btn:hover {
+        button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 15px rgba(79, 70, 229, 0.3);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
         }
 
-        .convert-btn:disabled {
-            opacity: 0.6;
+        button:disabled {
+            background: #ccc;
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
+        }
+
+        .results {
+            margin-top: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .frame-result {
+            text-align: center;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .frame-result:hover {
+            transform: translateY(-3px);
+        }
+
+        .frame-result img {
+            max-width: 100%;
+            border: 1px solid #e1e5e9;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .download-btn {
+            padding: 8px 16px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            transition: background 0.3s ease;
+        }
+
+        .download-btn:hover {
+            background: #218838;
         }
 
         .progress {
             width: 100%;
-            height: 8px;
-            background: #e2e8f0;
-            border-radius: 4px;
+            height: 6px;
+            background: #e1e5e9;
+            border-radius: 3px;
+            margin: 10px 0;
             overflow: hidden;
-            margin-bottom: 20px;
-            display: none;
         }
 
         .progress-bar {
             height: 100%;
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            background: linear-gradient(45deg, #667eea, #764ba2);
             width: 0%;
             transition: width 0.3s ease;
-        }
-
-        .download-section {
-            text-align: center;
-            padding: 20px;
-            background: #f0fdf4;
-            border-radius: 12px;
-            border: 1px solid #bbf7d0;
-            display: none;
-        }
-
-        .download-btn {
-            padding: 12px 24px;
-            background: #059669;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            transition: background 0.2s ease;
-        }
-
-        .download-btn:hover {
-            background: #047857;
-        }
-
-        .frames-preview {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-            gap: 10px;
-            max-height: 300px;
-            overflow-y: auto;
-            padding: 15px;
-            background: #f8fafc;
-            border-radius: 8px;
-            margin-top: 15px;
-        }
-
-        .frame {
-            width: 80px;
-            height: 80px;
-            border: 2px solid #e2e8f0;
-            border-radius: 4px;
-            background: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-            color: #64748b;
-        }
-
-        .frame img {
-            max-width: 100%;
-            max-height: 100%;
-            image-rendering: pixelated;
-        }
-
-        .error {
-            color: #dc2626;
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 15px;
-            display: none;
-        }
-
-        @media (max-width: 768px) {
-            .preview-section {
-                grid-template-columns: 1fr;
-            }
-            
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .main-content {
-                padding: 20px;
-            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🎮 7x7 스프라이트 GIF 변환기</h1>
-            <p>7x7 그리드 스프라이트를 투명 배경의 애니메이션 GIF로 변환하세요</p>
+        <h1>🎮 스프라이트 프레임 추출기</h1>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="frameWidth">프레임 가로 크기</label>
+                <input type="number" id="frameWidth" value="256" min="1">
+            </div>
+            <div class="control-group">
+                <label for="frameHeight">프레임 세로 크기</label>
+                <input type="number" id="frameHeight" value="256" min="1">
+            </div>
+            <div class="control-group">
+                <label for="gridCols">그리드 열 수</label>
+                <input type="number" id="gridCols" value="7" min="1">
+            </div>
+            <div class="control-group">
+                <label for="gridRows">그리드 행 수</label>
+                <input type="number" id="gridRows" value="7" min="1">
+            </div>
+            
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <p>스프라이트 시트를 여기에 드래그하거나 클릭하여 업로드하세요</p>
+                <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            </div>
         </div>
 
         <div class="main-content">
-            <div class="upload-section" onclick="document.getElementById('fileInput').click()">
-                <div class="upload-icon">📁</div>
-                <div class="upload-text">클릭하거나 파일을 드래그하여 업로드</div>
-                <div class="upload-subtext">PNG, JPG, GIF 파일 지원</div>
-            </div>
-            <input type="file" id="fileInput" accept="image/*">
-
-            <div class="controls">
-                <div class="control-group">
-                    <label for="frameWidth">프레임 너비 (px)</label>
-                    <input type="number" id="frameWidth" value="32" min="1" max="1000">
-                </div>
-                <div class="control-group">
-                    <label for="frameHeight">프레임 높이 (px)</label>
-                    <input type="number" id="frameHeight" value="32" min="1" max="1000">
-                </div>
-                <div class="control-group">
-                    <label for="frameDelay">프레임 딜레이 (ms)</label>
-                    <input type="number" id="frameDelay" value="100" min="10" max="5000">
-                </div>
-                <div class="control-group">
-                    <label for="quality">품질 (1-30, 낮을수록 고품질)</label>
-                    <input type="number" id="quality" value="10" min="1" max="30">
-                </div>
-            </div>
-
             <div class="preview-section">
-                <div class="preview-box">
-                    <h3>원본 스프라이트</h3>
-                    <canvas id="originalCanvas" style="display: none;"></canvas>
-                    <div id="framesPreview" class="frames-preview" style="display: none;"></div>
-                </div>
-                <div class="preview-box">
-                    <h3>변환된 GIF</h3>
-                    <img id="gifPreview" style="display: none;" alt="변환된 GIF">
+                <h3>스프라이트 미리보기</h3>
+                <div class="grid-overlay" id="gridOverlay">
+                    <img id="spritePreview" class="sprite-preview" style="display: none;">
+                    <canvas id="gridCanvas" class="grid-lines"></canvas>
                 </div>
             </div>
 
-            <button class="convert-btn" id="convertBtn" disabled>GIF로 변환하기</button>
-            
-            <div class="progress" id="progress">
-                <div class="progress-bar" id="progressBar"></div>
+            <div class="extraction-panel">
+                <h3>추출 옵션</h3>
+                <div class="extraction-options">
+                    <div class="radio-group">
+                        <div class="radio-option selected" data-option="all">
+                            <input type="radio" name="extractOption" value="all" checked>
+                            <span>전체 프레임 추출</span>
+                        </div>
+                        <div class="radio-option" data-option="single">
+                            <input type="radio" name="extractOption" value="single">
+                            <span>특정 프레임 추출</span>
+                            <div class="frame-input" id="singleFrameInput">
+                                <input type="number" id="singleFrame" placeholder="프레임 번호 (1부터)" min="1">
+                            </div>
+                        </div>
+                        <div class="radio-option" data-option="range">
+                            <input type="radio" name="extractOption" value="range">
+                            <span>범위 추출</span>
+                            <div class="frame-input" id="rangeFrameInput">
+                                <input type="number" id="rangeStart" placeholder="시작 프레임" min="1">
+                                <input type="number" id="rangeEnd" placeholder="끝 프레임" min="1">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="extractBtn" disabled>프레임 추출하기</button>
+                <div class="progress" style="display: none;">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
             </div>
-
-            <div class="download-section" id="downloadSection">
-                <h3>✅ 변환 완료!</h3>
-                <p>투명 배경의 애니메이션 GIF가 준비되었습니다.</p>
-                <a href="#" id="downloadBtn" class="download-btn">GIF 다운로드</a>
-            </div>
-
-            <div class="error" id="errorMessage"></div>
         </div>
+
+        <div class="results" id="results"></div>
     </div>
 
     <script>
-        class SpriteToGifConverter {
-            constructor() {
-                this.uploadSection = document.querySelector('.upload-section');
-                this.fileInput = document.getElementById('fileInput');
-                this.originalCanvas = document.getElementById('originalCanvas');
-                this.originalCtx = this.originalCanvas.getContext('2d');
-                this.framesPreview = document.getElementById('framesPreview');
-                this.gifPreview = document.getElementById('gifPreview');
-                this.convertBtn = document.getElementById('convertBtn');
-                this.downloadSection = document.getElementById('downloadSection');
-                this.downloadBtn = document.getElementById('downloadBtn');
-                this.progress = document.getElementById('progress');
-                this.progressBar = document.getElementById('progressBar');
-                this.errorMessage = document.getElementById('errorMessage');
+        let spriteImage = null;
+        let frameWidth = 256;
+        let frameHeight = 256;
+        let gridCols = 7;
+        let gridRows = 7;
 
-                this.frameWidthInput = document.getElementById('frameWidth');
-                this.frameHeightInput = document.getElementById('frameHeight');
-                this.frameDelayInput = document.getElementById('frameDelay');
-                this.qualityInput = document.getElementById('quality');
+        // DOM 요소들
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const spritePreview = document.getElementById('spritePreview');
+        const gridCanvas = document.getElementById('gridCanvas');
+        const extractBtn = document.getElementById('extractBtn');
+        const results = document.getElementById('results');
+        const progressBar = document.getElementById('progressBar');
 
-                this.currentImage = null;
-                this.frames = [];
+        // 설정 입력 요소들
+        const frameWidthInput = document.getElementById('frameWidth');
+        const frameHeightInput = document.getElementById('frameHeight');
+        const gridColsInput = document.getElementById('gridCols');
+        const gridRowsInput = document.getElementById('gridRows');
 
-                this.initEventListeners();
-            }
+        // 파일 업로드 이벤트
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handleFile(files[0]);
+        });
 
-            initEventListeners() {
-                // 파일 업로드
-                this.fileInput.addEventListener('change', (e) => {
-                    this.handleFileSelect(e.target.files[0]);
-                });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handleFile(e.target.files[0]);
+        });
 
-                // 드래그 앤 드롭
-                this.uploadSection.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    this.uploadSection.classList.add('dragover');
-                });
+        // 설정 변경 이벤트
+        [frameWidthInput, frameHeightInput, gridColsInput, gridRowsInput].forEach(input => {
+            input.addEventListener('input', updateSettings);
+        });
 
-                this.uploadSection.addEventListener('dragleave', () => {
-                    this.uploadSection.classList.remove('dragover');
-                });
-
-                this.uploadSection.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    this.uploadSection.classList.remove('dragover');
-                    const file = e.dataTransfer.files[0];
-                    if (file && file.type.startsWith('image/')) {
-                        this.handleFileSelect(file);
-                    }
-                });
-
-                // 변환 버튼
-                this.convertBtn.addEventListener('click', () => {
-                    this.convertToGif();
-                });
-
-                // 입력값 변경 시 미리보기 업데이트
-                [this.frameWidthInput, this.frameHeightInput].forEach(input => {
-                    input.addEventListener('change', () => {
-                        if (this.currentImage) {
-                            this.extractFrames();
-                        }
-                    });
-                });
-            }
-
-            handleFileSelect(file) {
-                if (!file || !file.type.startsWith('image/')) {
-                    this.showError('이미지 파일을 선택해주세요.');
-                    return;
+        // 라디오 옵션 이벤트
+        document.querySelectorAll('.radio-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.radio-option').forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                option.querySelector('input[type="radio"]').checked = true;
+                
+                // 입력 필드 표시/숨김
+                document.querySelectorAll('.frame-input').forEach(input => input.classList.remove('show'));
+                const optionType = option.dataset.option;
+                if (optionType === 'single') {
+                    document.getElementById('singleFrameInput').classList.add('show');
+                } else if (optionType === 'range') {
+                    document.getElementById('rangeFrameInput').classList.add('show');
                 }
+            });
+        });
 
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        this.currentImage = img;
-                        this.displayOriginalImage();
-                        this.extractFrames();
-                        this.convertBtn.disabled = false;
-                        this.hideError();
-                    };
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
+        // 추출 버튼 이벤트
+        extractBtn.addEventListener('click', extractFrames);
 
-            displayOriginalImage() {
-                this.originalCanvas.width = this.currentImage.width;
-                this.originalCanvas.height = this.currentImage.height;
-                this.originalCtx.drawImage(this.currentImage, 0, 0);
-                this.originalCanvas.style.display = 'block';
-            }
-
-            extractFrames() {
-                if (!this.currentImage) return;
-
-                const frameWidth = parseInt(this.frameWidthInput.value);
-                const frameHeight = parseInt(this.frameHeightInput.value);
-                
-                this.frames = [];
-                this.framesPreview.innerHTML = '';
-
-                // 7x7 그리드에서 프레임 추출
-                for (let row = 0; row < 7; row++) {
-                    for (let col = 0; col < 7; col++) {
-                        const x = col * frameWidth;
-                        const y = row * frameHeight;
-
-                        // 이미지 경계를 벗어나면 건너뛰기
-                        if (x + frameWidth > this.currentImage.width || 
-                            y + frameHeight > this.currentImage.height) {
-                            continue;
-                        }
-
-                        const canvas = document.createElement('canvas');
-                        canvas.width = frameWidth;
-                        canvas.height = frameHeight;
-                        const ctx = canvas.getContext('2d');
-
-                        // 프레임 추출
-                        ctx.drawImage(
-                            this.currentImage,
-                            x, y, frameWidth, frameHeight,
-                            0, 0, frameWidth, frameHeight
-                        );
-
-                        // 빈 프레임 체크 (모든 픽셀이 투명한지 확인)
-                        const imageData = ctx.getImageData(0, 0, frameWidth, frameHeight);
-                        const hasContent = imageData.data.some((value, index) => {
-                            return index % 4 === 3 && value > 0; // 알파 채널 확인
-                        });
-
-                        if (hasContent) {
-                            this.frames.push(canvas);
-                            
-                            // 미리보기에 프레임 추가
-                            const frameDiv = document.createElement('div');
-                            frameDiv.className = 'frame';
-                            const frameImg = document.createElement('img');
-                            frameImg.src = canvas.toDataURL();
-                            frameDiv.appendChild(frameImg);
-                            this.framesPreview.appendChild(frameDiv);
-                        }
-                    }
-                }
-
-                this.framesPreview.style.display = 'grid';
-                
-                if (this.frames.length === 0) {
-                    this.showError('유효한 프레임을 찾을 수 없습니다. 프레임 크기를 확인해주세요.');
-                } else {
-                    this.hideError();
-                }
-            }
-
-            async convertToGif() {
-                const selectedFrames = this.getSelectedFramesCanvases();
-                
-                if (selectedFrames.length === 0) {
-                    this.showError('변환할 프레임을 선택해주세요.');
-                    return;
-                }
-
-                // GIF 라이브러리가 로드되었는지 확인
-                if (typeof GIF === 'undefined') {
-                    this.showError('GIF 라이브러리가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
-                    return;
-                }
-
-                this.convertBtn.disabled = true;
-                this.progress.style.display = 'block';
-                this.downloadSection.style.display = 'none';
-                this.hideError();
-
-                try {
-                    // 간단한 GIF 인코더 사용
-                    await this.createGifWithCanvas(selectedFrames);
-
-                } catch (error) {
-                    this.showError('GIF 변환 중 오류가 발생했습니다: ' + error.message);
-                    this.convertBtn.disabled = false;
-                    this.progress.style.display = 'none';
-                }
-            }
-
-            async createGifWithCanvas(frames) {
-                // Canvas를 사용한 간단한 APNG/WebP 대신 애니메이션 생성
-                const delay = parseInt(this.frameDelayInput.value);
-                const quality = parseInt(this.qualityInput.value);
-                
-                try {
-                    const gif = new GIF({
-                        workers: 2,
-                        quality: quality,
-                        workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'
-                    });
-
-                    // 프레임 추가
-                    frames.forEach((frame, index) => {
-                        gif.addFrame(frame, { delay: delay });
-                        const progress = ((index + 1) / frames.length) * 30;
-                        this.updateProgress(progress);
-                    });
-
-                    gif.on('progress', (p) => {
-                        const progress = 30 + (p * 70);
-                        this.updateProgress(progress);
-                    });
-
-                    gif.on('finished', (blob) => {
-                        const url = URL.createObjectURL(blob);
-                        this.gifPreview.src = url;
-                        this.gifPreview.style.display = 'block';
-                        
-                        this.downloadBtn.href = url;
-                        this.downloadBtn.download = 'sprite-animation.gif';
-                        
-                        this.downloadSection.style.display = 'block';
-                        this.progress.style.display = 'none';
-                        this.convertBtn.disabled = false;
-                        
-                        this.updateProgress(100);
-                    });
-
-                    gif.render();
-
-                } catch (error) {
-                    // GIF.js가 실패하면 대체 방법 사용
-                    this.createAlternativeAnimation(frames);
-                }
-            }
-
-            createAlternativeAnimation(frames) {
-                // WebP 애니메이션 또는 APNG 대신 간단한 애니메이션 구현
-                const delay = parseInt(this.frameDelayInput.value);
-                
-                // 모든 프레임을 하나의 스프라이트로 합치기
-                const spriteCanvas = document.createElement('canvas');
-                const spriteCtx = spriteCanvas.getContext('2d');
-                
-                const frameWidth = frames[0].width;
-                const frameHeight = frames[0].height;
-                const frameCount = frames.length;
-                
-                spriteCanvas.width = frameWidth;
-                spriteCanvas.height = frameHeight * frameCount;
-                
-                frames.forEach((frame, index) => {
-                    spriteCtx.drawImage(frame, 0, index * frameHeight);
-                });
-                
-                // CSS 애니메이션으로 스프라이트 애니메이션 생성
-                const animationCanvas = document.createElement('canvas');
-                animationCanvas.width = frameWidth;
-                animationCanvas.height = frameHeight;
-                animationCanvas.style.background = 'url(' + spriteCanvas.toDataURL() + ')';
-                animationCanvas.style.animation = `sprite-animation ${delay * frameCount}ms infinite steps(${frameCount})`;
-                
-                // 단일 프레임 GIF로 변환 (애니메이션은 CSS로)
-                this.gifPreview.src = frames[0].toDataURL();
-                this.gifPreview.style.display = 'block';
-                
-                const link = document.createElement('a');
-                link.download = 'sprite-frames.png';
-                link.href = spriteCanvas.toDataURL();
-                
-                this.downloadBtn.href = spriteCanvas.toDataURL();
-                this.downloadBtn.download = 'sprite-sheet.png';
-                
-                this.downloadSection.style.display = 'block';
-                this.progress.style.display = 'none';
-                this.convertBtn.disabled = false;
-                this.updateProgress(100);
-                
-                this.showError('GIF 생성에 실패했지만 스프라이트 시트를 다운로드할 수 있습니다.');
-            }        
-                        this.updateProgress(100);
-                    });
-
-                    gif.render();
-
-                } catch (error) {
-                    // GIF.js가 실패하면 대체 방법 사용
-                    this.createAlternativeAnimation();
-                }
-            }
-
-            createAlternativeAnimation() {
-                // WebP 애니메이션 또는 APNG 대신 간단한 애니메이션 구현
-                const delay = parseInt(this.frameDelayInput.value);
-                
-                // 모든 프레임을 하나의 스프라이트로 합치기
-                const spriteCanvas = document.createElement('canvas');
-                const spriteCtx = spriteCanvas.getContext('2d');
-                
-                const frameWidth = this.frames[0].width;
-                const frameHeight = this.frames[0].height;
-                const frameCount = this.frames.length;
-                
-                spriteCanvas.width = frameWidth;
-                spriteCanvas.height = frameHeight * frameCount;
-                
-                this.frames.forEach((frame, index) => {
-                    spriteCtx.drawImage(frame, 0, index * frameHeight);
-                });
-                
-                // CSS 애니메이션으로 스프라이트 애니메이션 생성
-                const animationCanvas = document.createElement('canvas');
-                animationCanvas.width = frameWidth;
-                animationCanvas.height = frameHeight;
-                animationCanvas.style.background = 'url(' + spriteCanvas.toDataURL() + ')';
-                animationCanvas.style.animation = `sprite-animation ${delay * frameCount}ms infinite steps(${frameCount})`;
-                
-                // 단일 프레임 GIF로 변환 (애니메이션은 CSS로)
-                this.gifPreview.src = this.frames[0].toDataURL();
-                this.gifPreview.style.display = 'block';
-                
-                const link = document.createElement('a');
-                link.download = 'sprite-frames.png';
-                link.href = spriteCanvas.toDataURL();
-                
-                this.downloadBtn.href = spriteCanvas.toDataURL();
-                this.downloadBtn.download = 'sprite-sheet.png';
-                
-                this.downloadSection.style.display = 'block';
-                this.progress.style.display = 'none';
-                this.convertBtn.disabled = false;
-                this.updateProgress(100);
-                
-                this.showError('GIF 생성에 실패했지만 스프라이트 시트를 다운로드할 수 있습니다.');
-            }
-
-            updateProgress(percent) {
-                this.progressBar.style.width = percent + '%';
-            }
-
-            showError(message) {
-                this.errorMessage.textContent = message;
-                this.errorMessage.style.display = 'block';
-            }
-
-            hideError() {
-                this.errorMessage.style.display = 'none';
+        function updateSettings() {
+            frameWidth = parseInt(frameWidthInput.value) || 256;
+            frameHeight = parseInt(frameHeightInput.value) || 256;
+            gridCols = parseInt(gridColsInput.value) || 7;
+            gridRows = parseInt(gridRowsInput.value) || 7;
+            
+            if (spriteImage) {
+                drawGrid();
             }
         }
 
-        // 앱 초기화
-        document.addEventListener('DOMContentLoaded', () => {
-            new SpriteToGifConverter();
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('이미지 파일만 업로드해주세요.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                spriteImage = new Image();
+                spriteImage.onload = () => {
+                    spritePreview.src = e.target.result;
+                    spritePreview.style.display = 'block';
+                    drawGrid();
+                    extractBtn.disabled = false;
+                };
+                spriteImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function drawGrid() {
+            const img = spritePreview;
+            const rect = img.getBoundingClientRect();
+            const canvas = gridCanvas;
+            
+            canvas.width = img.offsetWidth;
+            canvas.height = img.offsetHeight;
+            canvas.style.width = img.offsetWidth + 'px';
+            canvas.style.height = img.offsetHeight + 'px';
+
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const cellWidth = canvas.width / gridCols;
+            const cellHeight = canvas.height / gridRows;
+
+            ctx.strokeStyle = '#ff4757';
+            ctx.lineWidth = 1;
+
+            // 세로 선
+            for (let i = 1; i < gridCols; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * cellWidth, 0);
+                ctx.lineTo(i * cellWidth, canvas.height);
+                ctx.stroke();
+            }
+
+            // 가로 선
+            for (let i = 1; i < gridRows; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, i * cellHeight);
+                ctx.lineTo(canvas.width, i * cellHeight);
+                ctx.stroke();
+            }
+        }
+
+        async function extractFrames() {
+            if (!spriteImage) return;
+
+            const extractOption = document.querySelector('input[name="extractOption"]:checked').value;
+            let framesToExtract = [];
+
+            if (extractOption === 'all') {
+                for (let i = 1; i <= gridRows * gridCols; i++) {
+                    framesToExtract.push(i);
+                }
+            } else if (extractOption === 'single') {
+                const frameNum = parseInt(document.getElementById('singleFrame').value);
+                if (frameNum && frameNum >= 1 && frameNum <= gridRows * gridCols) {
+                    framesToExtract.push(frameNum);
+                } else {
+                    alert('유효한 프레임 번호를 입력해주세요.');
+                    return;
+                }
+            } else if (extractOption === 'range') {
+                const start = parseInt(document.getElementById('rangeStart').value);
+                const end = parseInt(document.getElementById('rangeEnd').value);
+                if (start && end && start >= 1 && end <= gridRows * gridCols && start <= end) {
+                    for (let i = start; i <= end; i++) {
+                        framesToExtract.push(i);
+                    }
+                } else {
+                    alert('유효한 범위를 입력해주세요.');
+                    return;
+                }
+            }
+
+            results.innerHTML = '';
+            document.querySelector('.progress').style.display = 'block';
+
+            const canvas = document.createElement('canvas');
+            canvas.width = frameWidth;
+            canvas.height = frameHeight;
+            const ctx = canvas.getContext('2d');
+
+            const scaleX = spriteImage.width / spritePreview.offsetWidth;
+            const scaleY = spriteImage.height / spritePreview.offsetHeight;
+
+            for (let i = 0; i < framesToExtract.length; i++) {
+                const frameNum = framesToExtract[i];
+                const row = Math.floor((frameNum - 1) / gridCols);
+                const col = (frameNum - 1) % gridCols;
+
+                const sourceX = col * frameWidth * scaleX;
+                const sourceY = row * frameHeight * scaleY;
+
+                ctx.clearRect(0, 0, frameWidth, frameHeight);
+                ctx.drawImage(
+                    spriteImage,
+                    sourceX, sourceY, frameWidth * scaleX, frameHeight * scaleY,
+                    0, 0, frameWidth, frameHeight
+                );
+
+                const frameDataUrl = canvas.toDataURL('image/png');
+                
+                const frameDiv = document.createElement('div');
+                frameDiv.className = 'frame-result';
+                frameDiv.innerHTML = `
+                    <img src="${frameDataUrl}" alt="Frame ${frameNum}">
+                    <p>프레임 ${frameNum}</p>
+                    <a href="${frameDataUrl}" download="frame_${frameNum}.png" class="download-btn">다운로드</a>
+                `;
+                results.appendChild(frameDiv);
+
+                // 진행률 업데이트
+                const progress = ((i + 1) / framesToExtract.length) * 100;
+                progressBar.style.width = progress + '%';
+
+                // UI 업데이트를 위한 짧은 지연
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+
+            setTimeout(() => {
+                document.querySelector('.progress').style.display = 'none';
+                progressBar.style.width = '0%';
+            }, 500);
+        }
+
+        // 윈도우 리사이즈 시 그리드 다시 그리기
+        window.addEventListener('resize', () => {
+            if (spriteImage) {
+                setTimeout(drawGrid, 100);
+            }
         });
     </script>
 </body>
