@@ -195,6 +195,7 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
+            margin-bottom: 10px;
         }
 
         button:hover {
@@ -209,8 +210,37 @@
             box-shadow: none;
         }
 
+        .download-all-btn {
+            background: linear-gradient(45deg, #28a745, #20c997);
+        }
+
+        .download-all-btn:hover {
+            box-shadow: 0 10px 20px rgba(40, 167, 69, 0.3);
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 30px 0 20px 0;
+            padding: 0 10px;
+        }
+
+        .results-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .results-count {
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
         .results {
-            margin-top: 30px;
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             gap: 15px;
@@ -264,6 +294,13 @@
             background: linear-gradient(45deg, #667eea, #764ba2);
             width: 0%;
             transition: width 0.3s ease;
+        }
+
+        .loading-text {
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -332,21 +369,34 @@
                 </div>
                 
                 <button id="extractBtn" disabled>프레임 추출하기</button>
+                <div class="bulk-download-options" id="bulkDownloadOptions" style="display: none;">
+                    <button id="downloadPngBtn" class="download-all-btn bulk-option-btn">🖼️ 합친 PNG 다운로드</button>
+                    <button id="downloadZipBtn" class="download-all-btn bulk-option-btn">📦 ZIP 다운로드</button>
+                </div>
                 <div class="progress" style="display: none;">
                     <div class="progress-bar" id="progressBar"></div>
+                    <div class="loading-text" id="loadingText">프레임 추출 중...</div>
                 </div>
             </div>
         </div>
 
+        <div class="results-header" id="resultsHeader" style="display: none;">
+            <div class="results-title">추출된 프레임</div>
+            <div class="results-count" id="resultsCount">0개</div>
+        </div>
         <div class="results" id="results"></div>
     </div>
 
+    <!-- JSZip 라이브러리는 더 이상 필요 없음 -->
+    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>-->
+    
     <script>
         let spriteImage = null;
         let frameWidth = 256;
         let frameHeight = 256;
         let gridCols = 7;
         let gridRows = 7;
+        let extractedFrames = []; // 추출된 프레임들을 저장
 
         // DOM 요소들
         const uploadArea = document.getElementById('uploadArea');
@@ -354,8 +404,12 @@
         const spritePreview = document.getElementById('spritePreview');
         const gridCanvas = document.getElementById('gridCanvas');
         const extractBtn = document.getElementById('extractBtn');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
         const results = document.getElementById('results');
+        const resultsHeader = document.getElementById('resultsHeader');
+        const resultsCount = document.getElementById('resultsCount');
         const progressBar = document.getElementById('progressBar');
+        const loadingText = document.getElementById('loadingText');
 
         // 설정 입력 요소들
         const frameWidthInput = document.getElementById('frameWidth');
@@ -408,6 +462,9 @@
 
         // 추출 버튼 이벤트
         extractBtn.addEventListener('click', extractFrames);
+        
+        // 전체 다운로드 버튼 이벤트
+        downloadAllBtn.addEventListener('click', downloadAllFrames);
 
         function updateSettings() {
             frameWidth = parseInt(frameWidthInput.value) || 256;
@@ -508,6 +565,9 @@
             }
 
             results.innerHTML = '';
+            extractedFrames = [];
+            resultsHeader.style.display = 'none';
+            downloadAllBtn.style.display = 'none';
             document.querySelector('.progress').style.display = 'block';
 
             const canvas = document.createElement('canvas');
@@ -536,27 +596,107 @@
                 );
 
                 const frameDataUrl = canvas.toDataURL('image/png');
+                const fileName = `_a_frame_${frameNum}.png`;
+                
+                // 추출된 프레임 정보 저장
+                extractedFrames.push({
+                    frameNum: frameNum,
+                    dataUrl: frameDataUrl,
+                    fileName: fileName
+                });
                 
                 const frameDiv = document.createElement('div');
                 frameDiv.className = 'frame-result';
                 frameDiv.innerHTML = `
                     <img src="${frameDataUrl}" alt="Frame ${frameNum}">
                     <p>프레임 ${frameNum}</p>
-                    <a href="${frameDataUrl}" download="frame_${frameNum}.png" class="download-btn">다운로드</a>
+                    <a href="${frameDataUrl}" download="${fileName}" class="download-btn">다운로드</a>
                 `;
                 results.appendChild(frameDiv);
 
                 // 진행률 업데이트
                 const progress = ((i + 1) / framesToExtract.length) * 100;
                 progressBar.style.width = progress + '%';
+                loadingText.textContent = `프레임 추출 중... ${i + 1}/${framesToExtract.length}`;
 
                 // UI 업데이트를 위한 짧은 지연
                 await new Promise(resolve => setTimeout(resolve, 10));
             }
 
+            // 결과 표시
+            resultsCount.textContent = `${framesToExtract.length}개`;
+            resultsHeader.style.display = 'flex';
+            
+            // 전체 다운로드 버튼 표시 (2개 이상일 때만)
+            if (framesToExtract.length > 1) {
+                downloadAllBtn.style.display = 'block';
+            }
+
             setTimeout(() => {
                 document.querySelector('.progress').style.display = 'none';
                 progressBar.style.width = '0%';
+                loadingText.textContent = '프레임 추출 중...';
+            }, 500);
+        }
+
+        async function downloadAllFrames() {
+            if (extractedFrames.length === 0) return;
+
+            downloadAllBtn.disabled = true;
+            downloadAllBtn.textContent = '📦 ZIP 생성 중...';
+            document.querySelector('.progress').style.display = 'block';
+            loadingText.textContent = 'ZIP 파일 생성 중...';
+
+            const zip = new JSZip();
+
+            for (let i = 0; i < extractedFrames.length; i++) {
+                const frame = extractedFrames[i];
+                
+                // Base64 데이터를 바이너리로 변환
+                const base64Data = frame.dataUrl.split(',')[1];
+                const binaryData = atob(base64Data);
+                const bytes = new Uint8Array(binaryData.length);
+                for (let j = 0; j < binaryData.length; j++) {
+                    bytes[j] = binaryData.charCodeAt(j);
+                }
+
+                zip.file(frame.fileName, bytes);
+
+                // 진행률 업데이트
+                const progress = ((i + 1) / extractedFrames.length) * 100;
+                progressBar.style.width = progress + '%';
+                loadingText.textContent = `ZIP 파일 생성 중... ${i + 1}/${extractedFrames.length}`;
+
+                // UI 업데이트를 위한 짧은 지연
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+
+            try {
+                const content = await zip.generateAsync({ type: 'blob' });
+                
+                // 다운로드 링크 생성
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = '_a_sprite_frames.zip';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // URL 해제
+                URL.revokeObjectURL(link.href);
+            } catch (error) {
+                alert('ZIP 파일 생성 중 오류가 발생했습니다.');
+                console.error(error);
+            }
+
+            // 버튼 상태 복원
+            downloadAllBtn.disabled = false;
+            downloadAllBtn.textContent = '📦 전체 ZIP 다운로드';
+            
+            setTimeout(() => {
+                document.querySelector('.progress').style.display = 'none';
+                progressBar.style.width = '0%';
+                loadingText.textContent = '프레임 추출 중...';
             }, 500);
         }
 
@@ -566,6 +706,8 @@
                 setTimeout(drawGrid, 100);
             }
         });
+
+        }); // DOMContentLoaded 이벤트 리스너 종료
     </script>
 </body>
 </html>
