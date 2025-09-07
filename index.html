@@ -369,10 +369,7 @@
                 </div>
                 
                 <button id="extractBtn" disabled>프레임 추출하기</button>
-                <div class="bulk-download-options" id="bulkDownloadOptions" style="display: none;">
-                    <button id="downloadPngBtn" class="download-all-btn bulk-option-btn">🖼️ 합친 PNG 다운로드</button>
-                    <button id="downloadZipBtn" class="download-all-btn bulk-option-btn">📦 ZIP 다운로드</button>
-                </div>
+                <button id="downloadAllBtn" class="download-all-btn" style="display: none;">📄 전체 PNG 일괄 다운로드</button>
                 <div class="progress" style="display: none;">
                     <div class="progress-bar" id="progressBar"></div>
                     <div class="loading-text" id="loadingText">프레임 추출 중...</div>
@@ -387,327 +384,334 @@
         <div class="results" id="results"></div>
     </div>
 
-    <!-- JSZip 라이브러리는 더 이상 필요 없음 -->
-    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>-->
-    
     <script>
-        let spriteImage = null;
-        let frameWidth = 256;
-        let frameHeight = 256;
-        let gridCols = 7;
-        let gridRows = 7;
-        let extractedFrames = []; // 추출된 프레임들을 저장
+        document.addEventListener('DOMContentLoaded', function() {
+            let spriteImage = null;
+            let frameWidth = 256;
+            let frameHeight = 256;
+            let gridCols = 7;
+            let gridRows = 7;
+            let extractedFrames = [];
 
-        // DOM 요소들
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('fileInput');
-        const spritePreview = document.getElementById('spritePreview');
-        const gridCanvas = document.getElementById('gridCanvas');
-        const extractBtn = document.getElementById('extractBtn');
-        const downloadAllBtn = document.getElementById('downloadAllBtn');
-        const results = document.getElementById('results');
-        const resultsHeader = document.getElementById('resultsHeader');
-        const resultsCount = document.getElementById('resultsCount');
-        const progressBar = document.getElementById('progressBar');
-        const loadingText = document.getElementById('loadingText');
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            const spritePreview = document.getElementById('spritePreview');
+            const gridCanvas = document.getElementById('gridCanvas');
+            const extractBtn = document.getElementById('extractBtn');
+            const downloadAllBtn = document.getElementById('downloadAllBtn');
+            const results = document.getElementById('results');
+            const resultsHeader = document.getElementById('resultsHeader');
+            const resultsCount = document.getElementById('resultsCount');
+            const progressBar = document.getElementById('progressBar');
+            const loadingText = document.getElementById('loadingText');
+            const frameWidthInput = document.getElementById('frameWidth');
+            const frameHeightInput = document.getElementById('frameHeight');
+            const gridColsInput = document.getElementById('gridCols');
+            const gridRowsInput = document.getElementById('gridRows');
 
-        // 설정 입력 요소들
-        const frameWidthInput = document.getElementById('frameWidth');
-        const frameHeightInput = document.getElementById('frameHeight');
-        const gridColsInput = document.getElementById('gridCols');
-        const gridRowsInput = document.getElementById('gridRows');
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) handleFile(files[0]);
+            });
 
-        // 파일 업로드 이벤트
-        uploadArea.addEventListener('click', () => fileInput.click());
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) handleFile(files[0]);
-        });
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) handleFile(e.target.files[0]);
+            });
 
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) handleFile(e.target.files[0]);
-        });
+            [frameWidthInput, frameHeightInput, gridColsInput, gridRowsInput].forEach(input => {
+                input.addEventListener('input', updateSettings);
+            });
 
-        // 설정 변경 이벤트
-        [frameWidthInput, frameHeightInput, gridColsInput, gridRowsInput].forEach(input => {
-            input.addEventListener('input', updateSettings);
-        });
+            document.querySelectorAll('.radio-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    document.querySelectorAll('.radio-option').forEach(opt => opt.classList.remove('selected'));
+                    option.classList.add('selected');
+                    option.querySelector('input[type="radio"]').checked = true;
+                    
+                    document.querySelectorAll('.frame-input').forEach(input => input.classList.remove('show'));
+                    const optionType = option.dataset.option;
+                    if (optionType === 'single') {
+                        document.getElementById('singleFrameInput').classList.add('show');
+                    } else if (optionType === 'range') {
+                        document.getElementById('rangeFrameInput').classList.add('show');
+                    }
+                });
+            });
 
-        // 라디오 옵션 이벤트
-        document.querySelectorAll('.radio-option').forEach(option => {
-            option.addEventListener('click', () => {
-                document.querySelectorAll('.radio-option').forEach(opt => opt.classList.remove('selected'));
-                option.classList.add('selected');
-                option.querySelector('input[type="radio"]').checked = true;
+            extractBtn.addEventListener('click', extractFrames);
+            downloadAllBtn.addEventListener('click', downloadAllFrames);
+
+            function updateSettings() {
+                frameWidth = parseInt(frameWidthInput.value) || 256;
+                frameHeight = parseInt(frameHeightInput.value) || 256;
+                gridCols = parseInt(gridColsInput.value) || 7;
+                gridRows = parseInt(gridRowsInput.value) || 7;
                 
-                // 입력 필드 표시/숨김
-                document.querySelectorAll('.frame-input').forEach(input => input.classList.remove('show'));
-                const optionType = option.dataset.option;
-                if (optionType === 'single') {
-                    document.getElementById('singleFrameInput').classList.add('show');
-                } else if (optionType === 'range') {
-                    document.getElementById('rangeFrameInput').classList.add('show');
+                if (spriteImage) {
+                    drawGrid();
+                }
+            }
+
+            function handleFile(file) {
+                if (!file.type.startsWith('image/')) {
+                    alert('이미지 파일만 업로드해주세요.');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    spriteImage = new Image();
+                    spriteImage.onload = () => {
+                        spritePreview.src = e.target.result;
+                        spritePreview.style.display = 'block';
+                        drawGrid();
+                        extractBtn.disabled = false;
+                    };
+                    spriteImage.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function drawGrid() {
+                const img = spritePreview;
+                const canvas = gridCanvas;
+                
+                canvas.width = img.offsetWidth;
+                canvas.height = img.offsetHeight;
+                canvas.style.width = img.offsetWidth + 'px';
+                canvas.style.height = img.offsetHeight + 'px';
+
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                const cellWidth = canvas.width / gridCols;
+                const cellHeight = canvas.height / gridRows;
+
+                ctx.strokeStyle = '#ff4757';
+                ctx.lineWidth = 1;
+
+                for (let i = 1; i < gridCols; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(i * cellWidth, 0);
+                    ctx.lineTo(i * cellWidth, canvas.height);
+                    ctx.stroke();
+                }
+
+                for (let i = 1; i < gridRows; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, i * cellHeight);
+                    ctx.lineTo(canvas.width, i * cellHeight);
+                    ctx.stroke();
+                }
+            }
+
+            async function extractFrames() {
+                if (!spriteImage) return;
+
+                const extractOption = document.querySelector('input[name="extractOption"]:checked').value;
+                let framesToExtract = [];
+
+                if (extractOption === 'all') {
+                    for (let i = 1; i <= gridRows * gridCols; i++) {
+                        framesToExtract.push(i);
+                    }
+                } else if (extractOption === 'single') {
+                    const frameNum = parseInt(document.getElementById('singleFrame').value);
+                    if (frameNum && frameNum >= 1 && frameNum <= gridRows * gridCols) {
+                        framesToExtract.push(frameNum);
+                    } else {
+                        alert('유효한 프레임 번호를 입력해주세요.');
+                        return;
+                    }
+                } else if (extractOption === 'range') {
+                    const start = parseInt(document.getElementById('rangeStart').value);
+                    const end = parseInt(document.getElementById('rangeEnd').value);
+                    if (start && end && start >= 1 && end <= gridRows * gridCols && start <= end) {
+                        for (let i = start; i <= end; i++) {
+                            framesToExtract.push(i);
+                        }
+                    } else {
+                        alert('유효한 범위를 입력해주세요.');
+                        return;
+                    }
+                }
+
+                results.innerHTML = '';
+                extractedFrames = [];
+                resultsHeader.style.display = 'none';
+                downloadAllBtn.style.display = 'none';
+                document.querySelector('.progress').style.display = 'block';
+
+                const canvas = document.createElement('canvas');
+                canvas.width = frameWidth;
+                canvas.height = frameHeight;
+                const ctx = canvas.getContext('2d');
+
+                const actualFrameWidth = spriteImage.width / gridCols;
+                const actualFrameHeight = spriteImage.height / gridRows;
+
+                for (let i = 0; i < framesToExtract.length; i++) {
+                    const frameNum = framesToExtract[i];
+                    const row = Math.floor((frameNum - 1) / gridCols);
+                    const col = (frameNum - 1) % gridCols;
+
+                    const sourceX = col * actualFrameWidth;
+                    const sourceY = row * actualFrameHeight;
+
+                    ctx.clearRect(0, 0, frameWidth, frameHeight);
+                    ctx.drawImage(
+                        spriteImage,
+                        sourceX, sourceY, actualFrameWidth, actualFrameHeight,
+                        0, 0, frameWidth, frameHeight
+                    );
+
+                    const frameDataUrl = canvas.toDataURL('image/png');
+                    const fileName = `_a_frame_${frameNum}.png`;
+                    
+                    extractedFrames.push({
+                        frameNum: frameNum,
+                        dataUrl: frameDataUrl,
+                        fileName: fileName
+                    });
+                    
+                    const frameDiv = document.createElement('div');
+                    frameDiv.className = 'frame-result';
+                    frameDiv.innerHTML = `
+                        <img src="${frameDataUrl}" alt="Frame ${frameNum}">
+                        <p>프레임 ${frameNum}</p>
+                        <a href="${frameDataUrl}" download="${fileName}" class="download-btn">다운로드</a>
+                    `;
+                    results.appendChild(frameDiv);
+
+                    const progress = ((i + 1) / framesToExtract.length) * 100;
+                    progressBar.style.width = progress + '%';
+                    loadingText.textContent = `프레임 추출 중... ${i + 1}/${framesToExtract.length}`;
+
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
+
+                resultsCount.textContent = `${framesToExtract.length}개`;
+                resultsHeader.style.display = 'flex';
+                
+                if (framesToExtract.length > 1) {
+                    downloadAllBtn.style.display = 'block';
+                }
+
+                setTimeout(() => {
+                    document.querySelector('.progress').style.display = 'none';
+                    progressBar.style.width = '0%';
+                    loadingText.textContent = '프레임 추출 중...';
+                }, 500);
+            }
+
+            async function downloadAllFrames() {
+                if (extractedFrames.length === 0) return;
+
+                const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+                const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+                const isSafari = /Safari/.test(navigator.userAgent) && /Apple Computer/.test(navigator.vendor);
+                const isEdge = /Edg/.test(navigator.userAgent);
+
+                if (extractedFrames.length > 1) {
+                    let warningMessage = '';
+                    if (isChrome || isEdge) {
+                        warningMessage = '크롬/엣지에서는 다중 다운로드 시 권한 확인 창이 나타날 수 있습니다. "허용"을 클릭해주세요.';
+                    } else if (isFirefox) {
+                        warningMessage = '파이어폭스에서는 첫 번째 다운로드 후 다른 다운로드가 차단될 수 있습니다. 브라우저 설정에서 팝업 차단을 해제해주세요.';
+                    } else if (isSafari) {
+                        warningMessage = '사파리에서는 다중 다운로드가 제한될 수 있습니다. 개별 다운로드를 권장합니다.';
+                    } else {
+                        warningMessage = '일부 브라우저에서는 다중 다운로드가 차단될 수 있습니다.';
+                    }
+
+                    if (!confirm(warningMessage + '\n\n계속 진행하시겠습니까?')) {
+                        return;
+                    }
+                }
+
+                downloadAllBtn.disabled = true;
+                downloadAllBtn.textContent = '📄 다운로드 중...';
+                document.querySelector('.progress').style.display = 'block';
+                loadingText.textContent = 'PNG 파일들 다운로드 중...';
+
+                try {
+                    for (let i = 0; i < extractedFrames.length; i++) {
+                        const frame = extractedFrames[i];
+                        
+                        await downloadSingleFrame(frame, i, extractedFrames.length);
+
+                        let delay = 300;
+                        if (isChrome || isEdge) {
+                            delay = 500;
+                        } else if (isFirefox) {
+                            delay = 800;
+                        } else if (isSafari) {
+                            delay = 600;
+                        }
+
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                } catch (error) {
+                    console.error('다운로드 중 오류:', error);
+                    alert('다운로드 중 오류가 발생했습니다. 개별 다운로드를 시도해주세요.');
+                }
+
+                downloadAllBtn.disabled = false;
+                downloadAllBtn.textContent = '📄 전체 PNG 일괄 다운로드';
+                
+                setTimeout(() => {
+                    document.querySelector('.progress').style.display = 'none';
+                    progressBar.style.width = '0%';
+                    loadingText.textContent = '프레임 추출 중...';
+                }, 500);
+            }
+
+            function downloadSingleFrame(frame, index, total) {
+                return new Promise((resolve, reject) => {
+                    try {
+                        const link = document.createElement('a');
+                        link.href = frame.dataUrl;
+                        link.download = frame.fileName;
+                        link.style.display = 'none';
+                        
+                        document.body.appendChild(link);
+                        
+                        const clickEvent = new MouseEvent('click', {
+                            view: window,
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        
+                        link.dispatchEvent(clickEvent);
+                        document.body.removeChild(link);
+
+                        const progress = ((index + 1) / total) * 100;
+                        progressBar.style.width = progress + '%';
+                        loadingText.textContent = `PNG 파일 다운로드 중... ${index + 1}/${total}`;
+
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+            }
+
+            window.addEventListener('resize', () => {
+                if (spriteImage) {
+                    setTimeout(drawGrid, 100);
                 }
             });
         });
-
-        // 추출 버튼 이벤트
-        extractBtn.addEventListener('click', extractFrames);
-        
-        // 전체 다운로드 버튼 이벤트
-        downloadAllBtn.addEventListener('click', downloadAllFrames);
-
-        function updateSettings() {
-            frameWidth = parseInt(frameWidthInput.value) || 256;
-            frameHeight = parseInt(frameHeightInput.value) || 256;
-            gridCols = parseInt(gridColsInput.value) || 7;
-            gridRows = parseInt(gridRowsInput.value) || 7;
-            
-            if (spriteImage) {
-                drawGrid();
-            }
-        }
-
-        function handleFile(file) {
-            if (!file.type.startsWith('image/')) {
-                alert('이미지 파일만 업로드해주세요.');
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                spriteImage = new Image();
-                spriteImage.onload = () => {
-                    spritePreview.src = e.target.result;
-                    spritePreview.style.display = 'block';
-                    drawGrid();
-                    extractBtn.disabled = false;
-                };
-                spriteImage.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function drawGrid() {
-            const img = spritePreview;
-            const rect = img.getBoundingClientRect();
-            const canvas = gridCanvas;
-            
-            canvas.width = img.offsetWidth;
-            canvas.height = img.offsetHeight;
-            canvas.style.width = img.offsetWidth + 'px';
-            canvas.style.height = img.offsetHeight + 'px';
-
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            const cellWidth = canvas.width / gridCols;
-            const cellHeight = canvas.height / gridRows;
-
-            ctx.strokeStyle = '#ff4757';
-            ctx.lineWidth = 1;
-
-            // 세로 선
-            for (let i = 1; i < gridCols; i++) {
-                ctx.beginPath();
-                ctx.moveTo(i * cellWidth, 0);
-                ctx.lineTo(i * cellWidth, canvas.height);
-                ctx.stroke();
-            }
-
-            // 가로 선
-            for (let i = 1; i < gridRows; i++) {
-                ctx.beginPath();
-                ctx.moveTo(0, i * cellHeight);
-                ctx.lineTo(canvas.width, i * cellHeight);
-                ctx.stroke();
-            }
-        }
-
-        async function extractFrames() {
-            if (!spriteImage) return;
-
-            const extractOption = document.querySelector('input[name="extractOption"]:checked').value;
-            let framesToExtract = [];
-
-            if (extractOption === 'all') {
-                for (let i = 1; i <= gridRows * gridCols; i++) {
-                    framesToExtract.push(i);
-                }
-            } else if (extractOption === 'single') {
-                const frameNum = parseInt(document.getElementById('singleFrame').value);
-                if (frameNum && frameNum >= 1 && frameNum <= gridRows * gridCols) {
-                    framesToExtract.push(frameNum);
-                } else {
-                    alert('유효한 프레임 번호를 입력해주세요.');
-                    return;
-                }
-            } else if (extractOption === 'range') {
-                const start = parseInt(document.getElementById('rangeStart').value);
-                const end = parseInt(document.getElementById('rangeEnd').value);
-                if (start && end && start >= 1 && end <= gridRows * gridCols && start <= end) {
-                    for (let i = start; i <= end; i++) {
-                        framesToExtract.push(i);
-                    }
-                } else {
-                    alert('유효한 범위를 입력해주세요.');
-                    return;
-                }
-            }
-
-            results.innerHTML = '';
-            extractedFrames = [];
-            resultsHeader.style.display = 'none';
-            downloadAllBtn.style.display = 'none';
-            document.querySelector('.progress').style.display = 'block';
-
-            const canvas = document.createElement('canvas');
-            canvas.width = frameWidth;
-            canvas.height = frameHeight;
-            const ctx = canvas.getContext('2d');
-
-            // 원본 이미지 기준으로 실제 프레임 크기 계산
-            const actualFrameWidth = spriteImage.width / gridCols;
-            const actualFrameHeight = spriteImage.height / gridRows;
-
-            for (let i = 0; i < framesToExtract.length; i++) {
-                const frameNum = framesToExtract[i];
-                const row = Math.floor((frameNum - 1) / gridCols);
-                const col = (frameNum - 1) % gridCols;
-
-                // 원본 이미지에서의 실제 좌표
-                const sourceX = col * actualFrameWidth;
-                const sourceY = row * actualFrameHeight;
-
-                ctx.clearRect(0, 0, frameWidth, frameHeight);
-                ctx.drawImage(
-                    spriteImage,
-                    sourceX, sourceY, actualFrameWidth, actualFrameHeight,
-                    0, 0, frameWidth, frameHeight
-                );
-
-                const frameDataUrl = canvas.toDataURL('image/png');
-                const fileName = `_a_frame_${frameNum}.png`;
-                
-                // 추출된 프레임 정보 저장
-                extractedFrames.push({
-                    frameNum: frameNum,
-                    dataUrl: frameDataUrl,
-                    fileName: fileName
-                });
-                
-                const frameDiv = document.createElement('div');
-                frameDiv.className = 'frame-result';
-                frameDiv.innerHTML = `
-                    <img src="${frameDataUrl}" alt="Frame ${frameNum}">
-                    <p>프레임 ${frameNum}</p>
-                    <a href="${frameDataUrl}" download="${fileName}" class="download-btn">다운로드</a>
-                `;
-                results.appendChild(frameDiv);
-
-                // 진행률 업데이트
-                const progress = ((i + 1) / framesToExtract.length) * 100;
-                progressBar.style.width = progress + '%';
-                loadingText.textContent = `프레임 추출 중... ${i + 1}/${framesToExtract.length}`;
-
-                // UI 업데이트를 위한 짧은 지연
-                await new Promise(resolve => setTimeout(resolve, 10));
-            }
-
-            // 결과 표시
-            resultsCount.textContent = `${framesToExtract.length}개`;
-            resultsHeader.style.display = 'flex';
-            
-            // 전체 다운로드 버튼 표시 (2개 이상일 때만)
-            if (framesToExtract.length > 1) {
-                downloadAllBtn.style.display = 'block';
-            }
-
-            setTimeout(() => {
-                document.querySelector('.progress').style.display = 'none';
-                progressBar.style.width = '0%';
-                loadingText.textContent = '프레임 추출 중...';
-            }, 500);
-        }
-
-        async function downloadAllFrames() {
-            if (extractedFrames.length === 0) return;
-
-            downloadAllBtn.disabled = true;
-            downloadAllBtn.textContent = '📦 ZIP 생성 중...';
-            document.querySelector('.progress').style.display = 'block';
-            loadingText.textContent = 'ZIP 파일 생성 중...';
-
-            const zip = new JSZip();
-
-            for (let i = 0; i < extractedFrames.length; i++) {
-                const frame = extractedFrames[i];
-                
-                // Base64 데이터를 바이너리로 변환
-                const base64Data = frame.dataUrl.split(',')[1];
-                const binaryData = atob(base64Data);
-                const bytes = new Uint8Array(binaryData.length);
-                for (let j = 0; j < binaryData.length; j++) {
-                    bytes[j] = binaryData.charCodeAt(j);
-                }
-
-                zip.file(frame.fileName, bytes);
-
-                // 진행률 업데이트
-                const progress = ((i + 1) / extractedFrames.length) * 100;
-                progressBar.style.width = progress + '%';
-                loadingText.textContent = `ZIP 파일 생성 중... ${i + 1}/${extractedFrames.length}`;
-
-                // UI 업데이트를 위한 짧은 지연
-                await new Promise(resolve => setTimeout(resolve, 10));
-            }
-
-            try {
-                const content = await zip.generateAsync({ type: 'blob' });
-                
-                // 다운로드 링크 생성
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(content);
-                link.download = '_a_sprite_frames.zip';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                
-                // URL 해제
-                URL.revokeObjectURL(link.href);
-            } catch (error) {
-                alert('ZIP 파일 생성 중 오류가 발생했습니다.');
-                console.error(error);
-            }
-
-            // 버튼 상태 복원
-            downloadAllBtn.disabled = false;
-            downloadAllBtn.textContent = '📦 전체 ZIP 다운로드';
-            
-            setTimeout(() => {
-                document.querySelector('.progress').style.display = 'none';
-                progressBar.style.width = '0%';
-                loadingText.textContent = '프레임 추출 중...';
-            }, 500);
-        }
-
-        // 윈도우 리사이즈 시 그리드 다시 그리기
-        window.addEventListener('resize', () => {
-            if (spriteImage) {
-                setTimeout(drawGrid, 100);
-            }
-        });
-
-        }); // DOMContentLoaded 이벤트 리스너 종료
     </script>
 </body>
 </html>
